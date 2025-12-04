@@ -29,7 +29,31 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    // Build URL with query parameters if provided
+    const [baseUrl, ...params] = queryKey as [string, ...unknown[]];
+    let url = baseUrl;
+    
+    // If there are additional parameters, add them as query string
+    if (params.length > 0) {
+      const searchParams = new URLSearchParams();
+      
+      // Handle different parameter types
+      params.forEach((param, index) => {
+        if (param !== null && param !== undefined && param !== "") {
+          // Map index to parameter name based on common patterns
+          const paramNames = ["page", "limit", "search", "branch", "department", "sector", "sortField", "sortDirection"];
+          const paramName = paramNames[index] || `param${index}`;
+          searchParams.append(paramName, String(param));
+        }
+      });
+      
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url = `${baseUrl}?${queryString}`;
+      }
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 
@@ -47,7 +71,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 5000,
       retry: false,
     },
     mutations: {
