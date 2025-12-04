@@ -1,0 +1,281 @@
+الهدف: إعمللي مشروع Next.js (App Router) كامل مع TailwindCSS بيبقى نظام مصغّر لإدارة مرتبات الموظفين. المشروع لازم يشتغل فورًا على Replit (أو محليًا) بدون أخطاء.
+
+متطلبات وظيفية (Functional requirements — بالترتيب)
+1) Import / Read Excel
+
+استخدم حزمة xlsx لقراءة الملف /mnt/data/fe7c67ca-f472-4e49-b34b-3508a83ad3ab.xlsx.
+
+السطر الأول في الشيت هو عناوين الأعمدة باللغة العربية — استخدمها كـ headers.
+
+حافظ على ترتيب الأعمدة الأصلي (77 عمود).
+
+بعد القراءة، خزن البيانات كـ JSON في ملف data/employees.json داخل المشروع (أو في SQLite إذا اخترت DB) — لكن الافتراض: استخدم lowdb (JSON file) لتسهيل التشغيل على Replit.
+
+2) Backend API (Next.js API Routes)
+
+أنشئ API routes تحت /app/api/... أو /pages/api/... (لو App Router استخدم server actions أو route handlers).
+
+لازم يكون عندك endpoints التالية:
+
+GET /api/employees — يرجع كل الموظفين (with pagination params ?page=&limit=).
+
+PUT /api/employees/:id — تحدث بيانات موظف (تدعم تعديلات فقط على الحقول المحددة بالأدنى).
+
+POST /api/employees — إضافة موظف جديد.
+
+DELETE /api/employees/:id — حذف موظف.
+
+POST /api/import — رفع ملف Excel جديد أو إعادة استيراد الملف الموجود (يعمل merge / replace).
+
+GET /api/export — يرجع ملف Excel مبني من البيانات الحالية (تنزيل).
+
+GET /api/backup — يحفظ نسخة احتياطية من JSON مع طابع زمني.
+
+GET /api/history — يرجع لوج التعديلات (history) — كل سجل: user(وضع guest لو مفيش auth), timestamp, field, oldValue, newValue, employeeId.
+
+POST /api/notes/:employeeId — إضافة ملاحظة.
+
+GET /api/notes/:employeeId — جلب الملاحظات.
+
+ملاحظة: استخدِم file-based storage (lowdb) أو SQLite. لو اخترت lowdb حافظ على ملف data/employees.json و data/history.json و data/notes.json.
+
+3) الأعمدة المسموح تعديلها (Editable fields — numeric)
+
+عشان تتعامل معاها بالـ inline editing، لازم هتخلي الخلايا دي قابلة للكتابة فقط:
+
+الراتب الشهري
+
+عدد
+
+عدد2
+
+عدد4
+
+عدد6
+
+السلف
+
+بدلات
+
+مكافات
+
+حافز
+
+اوفر تايم
+
+تسويات
+
+كونتست
+
+عمولات رايا
+
+عمولات شركه حالا
+
+عمولات سفن
+
+عمولات الاسكندريه
+
+عمولات كريدي
+
+عمولات ماني
+
+عمولات رايه قانوني
+
+عمولات فاليو قانونى
+
+بلتون قانونى
+
+عمولات تنمية قانونى
+
+عمولات وسيلة قانونى
+
+وسيلة 10
+
+وسيلة 9
+
+تنمية
+
+عمولات ميد قانوني
+
+ميد بنك
+
+ارادة
+
+عمولة سهولة قانوني
+
+الخلايا دي لازم تتحقق (validation) أنها أرقام (float)، وتدعم وجود فارغ (NaN) أو صفر.
+
+4) Table UI (Frontend)
+
+صفحة أساسية / فيها DataTable واسع:
+
+Search عام (بحث نص على الاسم، الكود، الرقم القومي، الفرع، الإدارة).
+
+فلتر بحسب الفرع / الإدارة / القطاع.
+
+فرز على أي عمود.
+
+Pagination (50/100/صف لكل صفحة).
+
+Horizontal scroll لأن فيه أعمدة كتير.
+
+زرار "Add Employee" فوق الجدول.
+
+داخل كل صف: زر "Delete" و زر "Notes".
+
+كل خلية قابلة للتعديل تستخدم component <EditableCell />:
+
+عند الضغط تظهر input رقمي.
+
+عند الخروج onBlur تعمل PUT /api/employees/:id وتضيف سجل في history.
+
+التحديثات تظهر فورًا في الواجهة (optimistic UI) ومع rollback لو فشل.
+
+5) Add / Delete Employee
+
+Add → يفتح modal بفراغات أساسية (الكود، الاسم، الرقم القومي، الفرع، الإدارة، الوظيفة، تاريخ التعيين) + بقية الحقول يمكن تركها فارغة.
+
+عند حفظ → POST /api/employees → يضيف في JSON ويحفظ نسخة احتياطية.
+
+Delete → يطلب تأكيد ثم DELETE, ويسجل في history.
+
+6) Notes
+
+لكل موظف تقدر تضيف ملاحظات (text) بتوقيت ومستخدم.
+
+بواجهة Notes modal تعرض كل الملاحظات مع إمكانية حذف أو تعديل الملاحظة (اختياري).
+
+7) Import from other sheets (XLOOKUP replacement)
+
+أعمل صفحة Import/Sync تسمح ترفع شيتات إضافية:
+
+شيت البدلات
+
+شيت العمولات
+
+أي شيت بيانات إضافية
+
+ال logic:
+
+اختار عمود الـ key (مثلاً: "الكود" أو "الرقم القومي") كـ matching key.
+
+لأي صف في الملف الإضافي، يعمل lookup على data/employees.json ويضيف/يحدث الحقول المطابقة (مثلاً: حقل "بدلات" يتم ملؤه بقيمة العمود في شيت البدلات).
+
+اعمل dry-run preview قبل التنفيذ (تظهر الاختلافات: oldValue → newValue).
+
+بعد التأكيد تعمل update وتكتب في history.json كل تغيير.
+
+8) Export
+
+زرار "Export to Excel" يصنع ملف Excel بنفس ترتيب الأعمدة والـ headers العربية، ويحمل الملف للتحميل.
+
+زرار "Export JSON" يحمل employees.json.
+
+امكانية Export مفردة لموظف (Payslip) — يصدّر PDF (استخدم html2pdf أو jspdf).
+
+9) Dashboard & Reports
+
+صفحة صغيرة تعرض إحصائيات: إجمالي الرواتب، إجمالي البدلات، إجمالي العمولات، أعلى 10 موظفين بالعمولات، متوسط الرواتب.
+
+جدول تغيّر شهري (لو عملت versions لكل شهر).
+
+10) Versioning / Monthly snapshots
+
+عند كل Export/Backup احفظ snapshot في data/backups/ro7bah-YYYYMMDD-HHMM.json.
+
+أعطي واجهة لاسترجاع snapshot كـ current dataset.
+
+11) History / Audit log
+
+كل تغيير خزن record: {id, employeeId, field, oldValue, newValue, user: "guest", timestamp}
+
+واجهة لعرض History مع فلتر باسم الموظف والتاريخ والحقل.
+
+12) Authentication (اختياري لكن مرغوب)
+
+لو حابب أضف auth بسيطة: استخدم NextAuth (credentials) أو basic password (env var) — لكن على Replit ممكن تبدأ بدون auth، مع وضع تنبيه "البيانات غير محمية على Replit".
+
+13) Internationalization & RTL
+
+الصفحة تدعم Arabic RTL بشكل صحيح.
+
+استعمل dir="rtl" و Tailwind classes مناسبة.
+
+تعامل مع ترميز UTF-8 أثناء قراءة وكتابة الـ Excel.
+
+متطلبات تقنية وملفات يجب أن تُولد
+Dependencies (package.json)
+
+next
+
+react
+
+react-dom
+
+tailwindcss + postcss + autoprefixer
+
+xlsx
+
+lowdb (أو better-sqlite3 / sqlite3 لو حابب)
+
+nanoid (لـ IDs)
+
+axios (frontend API calls)
+
+html2canvas + jspdf (لـ PDF) أو html2pdf.js
+
+date-fns (تاريخ)
+
+clsx (اختياري)
+
+react-table / @tanstack/react-table (لـ جدول قوي) — أو أي DataTable خفيف.
+
+Project structure (اقتراح)
+/app
+  /api
+    employees/route.js
+    import/route.js
+    export/route.js
+    history/route.js
+    notes/[id]/route.js
+  /employees
+    page.jsx
+  /dashboard
+    page.jsx
+  layout.jsx
+/components
+  DataTable.jsx
+  EditableCell.jsx
+  Pagination.jsx
+  SearchFilter.jsx
+  NotesModal.jsx
+  ImportModal.jsx
+/lib
+  db.js      // lowdb wrapper
+  excel.js   // import/export helpers
+  utils.js
+/data
+  employees.json
+  history.json
+  notes.json
+  backups/
+
+UX / UI details (بشكل عملي)
+
+صفحة /employees: جدول كامل مع inline edit للأعمدة المطلوبة، زر "حفظ" اختياري لكن الأفضل تحديث تلقائي.
+
+زر "Import" في أعلى يمين الصفحة يفتح modal لرفع ملف Excel أو اختيار الشيتات.
+
+زر "Export" مع خيارات (Excel / JSON / PDF).
+
+Use Tailwind UI simple clean style, مظاهر مرتبة، خطوط عربية تحميل Google Font (Cairo أو Noto Kufi).
+
+عند التحديث: أظهر toast نجاح أو خطأ.
+
+Error handling & validation
+
+التحقق إن الحقول الرقمية تكون أرقام، إظهار خطأ إن لم تكن.
+
+عند فشل IO (كتابة الملف) رجّع رسالة خطأ مفهومة.
+
+Logging server-side في ملفات logs/ (اختياري).
